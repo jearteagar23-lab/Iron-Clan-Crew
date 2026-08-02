@@ -114,7 +114,7 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
       <div class="card">
         <h2>Entrena con datos</h2>
         <p class="note">Calcula referencias útiles para organizar tu alimentación, hidratación y progresión de fuerza.</p>
-        <div style="margin-top:14px">
+        <div id="homeProfile" class="box">Aún no has guardado tus datos.</div><div style="margin-top:14px">
           <span class="badge">Calorías</span><span class="badge">Macros</span><span class="badge">IMC</span>
           <span class="badge">Agua</span><span class="badge">1RM</span>
         </div>
@@ -138,7 +138,7 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
   <section id="macros" class="section">
     <div class="two-col">
       <form id="macroForm" class="card no-print" novalidate>
-        <h2>Calculadora de macros</h2>
+        <h2>Mis datos</h2><p class="note">Registra tus datos una sola vez. La app los usará automáticamente en Macros, IMC y Agua.</p>
         <div class="row">
           <div><label>Sexo biológico</label><select id="mSexo"><option value="h">Hombre</option><option value="m">Mujer</option></select></div>
           <div><label>Edad</label><input id="mEdad" type="number" min="18" max="90" value="35"></div>
@@ -154,7 +154,7 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
           <option value="1.9">Muy alto</option>
         </select>
         <label>Objetivo</label>
-        <select id="mObjetivo"><option value="perder">Perder grasa</option><option value="mantener">Mantener</option><option value="ganar">Ganar masa muscular</option></select>
+        <select id="mObjetivo"><option value="perder">Perder grasa</option><option value="recomposicion">Perder grasa y ganar músculo</option><option value="mantener">Mantener</option><option value="ganar">Ganar masa muscular</option></select>
         <label>Proteína por kg</label>
         <select id="mFactor"><option value="1.6">1.6 g/kg</option><option value="1.8" selected>1.8 g/kg</option><option value="2">2.0 g/kg</option><option value="2.2">2.2 g/kg</option></select>
         <label>Comidas al día</label>
@@ -189,12 +189,12 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
 
   <section id="imc" class="section">
     <div class="two-col">
-      <form id="imcForm" class="card no-print">
+      <div class="card no-print">
         <h2>Calculadora de IMC</h2>
-        <label>Peso (kg)</label><input id="iPeso" type="number" min="30" max="250" step="0.1" value="75">
-        <label>Estatura (cm)</label><input id="iAltura" type="number" min="120" max="230" value="172">
-        <button class="primary" type="submit">CALCULAR IMC</button>
-      </form>
+        <p class="note">Se calcula automáticamente usando el peso y la estatura guardados en “Macros”.</p>
+        <div id="iProfile" class="box">Primero guarda tus datos en Macros.</div>
+        <button id="iCalcBtn" class="primary" type="button">ACTUALIZAR IMC</button>
+      </div>
       <div class="card">
         <h2 class="accent">Resultado</h2>
         <div id="iInitial" class="note">Ingresa peso y estatura.</div>
@@ -211,7 +211,8 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
     <div class="two-col">
       <form id="aguaForm" class="card no-print">
         <h2>Calculadora de agua</h2>
-        <label>Peso (kg)</label><input id="aPeso" type="number" min="30" max="250" step="0.1" value="75">
+        <p class="note">El peso se obtiene automáticamente de tus datos guardados.</p>
+        <div id="aProfile" class="box">Primero guarda tus datos en Macros.</div>
         <label>Duración del entrenamiento (minutos)</label><input id="aMin" type="number" min="0" max="240" value="60">
         <label>Clima</label><select id="aClima"><option value="0">Templado</option><option value="0.35">Caluroso</option><option value="0.6">Muy caluroso</option></select>
         <button class="primary" type="submit">CALCULAR AGUA</button>
@@ -230,7 +231,7 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
   <section id="rm" class="section">
     <div class="two-col">
       <form id="rmForm" class="card no-print">
-        <h2>Calculadora de 1RM</h2>
+        <h2>Calculadora de 1RM</h2><p class="note">Tus datos personales ya están guardados. Solo indica el levantamiento realizado.</p><label>Ejercicio</label><select id="rEjercicio"><option>Press banca</option><option>Sentadilla</option><option>Peso muerto</option><option>Press militar</option><option>Hip thrust</option><option>Otro</option></select>
         <label>Peso levantado (kg)</label><input id="rPeso" type="number" min="1" max="500" step="0.5" value="80">
         <label>Repeticiones realizadas</label><input id="rReps" type="number" min="1" max="12" value="8">
         <button class="primary" type="submit">CALCULAR 1RM</button>
@@ -253,11 +254,27 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
 <script>
 (function(){
 "use strict";
-function n(id){return parseFloat(String(document.getElementById(id).value).replace(",","."))}
-function t(id,v){document.getElementById(id).textContent=v}
+var PROFILE_KEY="ironClanProfileV1";
+function n(id){return parseFloat(String(document.getElementById(id).value).replace(",", "."))}
+function t(id,v){var el=document.getElementById(id);if(el)el.textContent=v}
+function getProfile(){try{return JSON.parse(localStorage.getItem(PROFILE_KEY)||"null")}catch(e){return null}}
+function saveProfile(p){localStorage.setItem(PROFILE_KEY,JSON.stringify(p));refreshProfileUI()}
+function labelGoal(g){return g==="perder"?"Perder grasa":g==="recomposicion"?"Perder grasa y ganar músculo":g==="ganar"?"Ganar masa muscular":"Mantener"}
+function profileText(p){return p?p.peso+" kg · "+p.altura+" cm · "+p.edad+" años · "+labelGoal(p.objetivo):"Aún no has guardado tus datos."}
+function refreshProfileUI(){
+  var p=getProfile(),txt=profileText(p);
+  ["homeProfile","iProfile","aProfile"].forEach(function(id){var el=document.getElementById(id);if(el)el.textContent=txt});
+  if(p){
+    var pairs={mSexo:p.sexo,mEdad:p.edad,mPeso:p.peso,mAltura:p.altura,mActividad:p.actividad,mObjetivo:p.objetivo,mFactor:p.factor,mComidas:p.comidas};
+    Object.keys(pairs).forEach(function(id){var el=document.getElementById(id);if(el)el.value=pairs[id]});
+    calculateIMC(false);calculateWater(false);
+  }
+}
 function showSection(id){
   document.querySelectorAll(".section").forEach(function(s){s.classList.toggle("active",s.id===id)});
   document.querySelectorAll(".nav button").forEach(function(b){b.classList.toggle("active",b.dataset.section===id)});
+  if(id==="imc")calculateIMC(false);
+  if(id==="agua")calculateWater(false);
   window.scrollTo({top:0,behavior:"smooth"});
 }
 document.querySelectorAll(".nav button").forEach(function(b){b.addEventListener("click",function(){showSection(b.dataset.section)})});
@@ -266,46 +283,54 @@ document.querySelectorAll("[data-open]").forEach(function(el){el.addEventListene
 document.getElementById("macroForm").addEventListener("submit",function(e){
   e.preventDefault();
   var err=document.getElementById("mError");err.classList.add("hidden");
-  var sex=document.getElementById("mSexo").value,age=n("mEdad"),w=n("mPeso"),h=n("mAltura"),
-      act=n("mActividad"),goal=document.getElementById("mObjetivo").value,f=n("mFactor"),
-      meals=parseInt(document.getElementById("mComidas").value,10);
+  var sex=document.getElementById("mSexo").value,age=n("mEdad"),w=n("mPeso"),h=n("mAltura"),act=n("mActividad"),
+      goal=document.getElementById("mObjetivo").value,f=n("mFactor"),meals=parseInt(document.getElementById("mComidas").value,10);
   if(!isFinite(age)||!isFinite(w)||!isFinite(h)||age<18||age>90||w<35||w>250||h<130||h>220){
     err.textContent="Revisa edad, peso y estatura.";err.classList.remove("hidden");return;
   }
+  saveProfile({sexo:sex,edad:age,peso:w,altura:h,actividad:act,objetivo:goal,factor:f,comidas:meals});
   var bmr=10*w+6.25*h-5*age+(sex==="h"?5:-161),maint=bmr*act,cal=maint;
-  if(goal==="perder")cal*=0.82;if(goal==="ganar")cal*=1.10;
-  var prot=w*f,fkg=goal==="perder"?0.8:0.9,fat=w*fkg,carb=(cal-prot*4-fat*9)/4;
+  if(goal==="perder")cal*=0.82;
+  if(goal==="recomposicion")cal*=0.95;
+  if(goal==="ganar")cal*=1.10;
+  var pf=goal==="recomposicion"?Math.max(f,2.0):f;
+  var prot=w*pf,fkg=(goal==="perder"||goal==="recomposicion")?0.8:0.9,fat=w*fkg,carb=(cal-prot*4-fat*9)/4;
   if(carb<80){carb=80;cal=prot*4+fat*9+carb*4}
   var fiber=Math.max(25,cal/1000*14),water=w*0.035;
-  t("mCal",Math.round(cal));t("mMant",Math.round(maint));t("mProt",Math.round(prot));t("mFat",Math.round(fat));t("mCarb",Math.round(carb));t("mFiber",Math.round(fiber));t("mWater",water.toFixed(1));
-  document.getElementById("mDetail").textContent=(goal==="perder"?"Déficit aproximado del 18%.":goal==="ganar"?"Superávit aproximado del 10%.":"Calorías de mantenimiento.")+" Proteína "+f.toFixed(1)+" g/kg y grasas "+fkg.toFixed(1)+" g/kg.";
+  t("mCal",Math.round(cal));t("mMant",Math.round(maint));t("mProt",Math.round(prot));t("mFat",Math.round(fat));
+  t("mCarb",Math.round(carb));t("mFiber",Math.round(fiber));t("mWater",water.toFixed(1));
+  var detail=goal==="perder"?"Déficit aproximado del 18%.":goal==="recomposicion"?"Déficit leve aproximado del 5%, proteína elevada y entrenamiento de fuerza para favorecer la recomposición corporal.":goal==="ganar"?"Superávit aproximado del 10%.":"Calorías de mantenimiento.";
+  document.getElementById("mDetail").textContent=detail+" Proteína "+pf.toFixed(1)+" g/kg y grasas "+fkg.toFixed(1)+" g/kg.";
   var box=document.getElementById("mMeals");box.innerHTML="";
   var pc=Math.round(prot/meals),fc=Math.round(fat/meals),cc=Math.round(carb/meals),kc=Math.round(cal/meals);
   for(var i=1;i<=meals;i++){var d=document.createElement("div");d.className="box";d.innerHTML="<b>Comida "+i+"</b><br>"+kc+" kcal · "+pc+" g proteína · "+fc+" g grasa · "+cc+" g carbohidratos";box.appendChild(d)}
   document.getElementById("mInitial").classList.add("hidden");document.getElementById("mResult").classList.remove("hidden");
+  calculateIMC(false);calculateWater(false);
 });
-
-document.getElementById("imcForm").addEventListener("submit",function(e){
-  e.preventDefault();var w=n("iPeso"),h=n("iAltura")/100;if(!isFinite(w)||!isFinite(h)||h<=0)return;
-  var imc=w/(h*h),c=imc<18.5?"Bajo peso":imc<25?"Rango considerado normal":imc<30?"Sobrepeso":imc<35?"Obesidad grado I":imc<40?"Obesidad grado II":"Obesidad grado III";
+function calculateIMC(showMissing){
+  var p=getProfile();if(!p){if(showMissing)alert("Primero registra tus datos en Macros.");return}
+  var h=p.altura/100,imc=p.peso/(h*h),c=imc<18.5?"Bajo peso":imc<25?"Rango considerado normal":imc<30?"Sobrepeso":imc<35?"Obesidad grado I":imc<40?"Obesidad grado II":"Obesidad grado III";
   t("iValue",imc.toFixed(1));document.getElementById("iClass").textContent=c;document.getElementById("iInitial").classList.add("hidden");document.getElementById("iResult").classList.remove("hidden");
-});
-
-document.getElementById("aguaForm").addEventListener("submit",function(e){
-  e.preventDefault();var w=n("aPeso"),mins=n("aMin"),cl=n("aClima");if(!isFinite(w)||!isFinite(mins))return;
-  var base=w*0.035,training=(mins/60)*0.5,total=base+training+cl;
+}
+document.getElementById("iCalcBtn").addEventListener("click",function(){calculateIMC(true)});
+function calculateWater(showMissing){
+  var p=getProfile();if(!p){if(showMissing)alert("Primero registra tus datos en Macros.");return}
+  var mins=n("aMin"),cl=n("aClima");if(!isFinite(mins))mins=60;
+  var base=p.peso*0.035,training=(mins/60)*0.5,total=base+training+cl;
   t("aLitros",total.toFixed(1));document.getElementById("aDetail").textContent="Base por peso: "+base.toFixed(1)+" L. Entrenamiento: +"+training.toFixed(1)+" L. Ajuste climático: +"+cl.toFixed(1)+" L.";
   document.getElementById("aInitial").classList.add("hidden");document.getElementById("aResult").classList.remove("hidden");
-});
-
+}
+document.getElementById("aguaForm").addEventListener("submit",function(e){e.preventDefault();calculateWater(true)});
 document.getElementById("rmForm").addEventListener("submit",function(e){
-  e.preventDefault();var w=n("rPeso"),reps=n("rReps");if(!isFinite(w)||!isFinite(reps)||reps<1||reps>12)return;
+  e.preventDefault();var w=n("rPeso"),reps=n("rReps"),exercise=document.getElementById("rEjercicio").value;
+  if(!isFinite(w)||!isFinite(reps)||reps<1||reps>12)return;
   var one=w*(1+reps/30);t("rOne",Math.round(one));
-  var arr=[95,90,85,80,75,70,65,60,55,50],box=document.getElementById("rTable");box.innerHTML="";
+  var arr=[95,90,85,80,75,70,65,60,55,50],box=document.getElementById("rTable");
+  box.innerHTML="<div class='box'><b>"+exercise+"</b><br>Estimación basada en "+w+" kg × "+reps+" repeticiones.</div>";
   arr.forEach(function(p){var d=document.createElement("div");d.className="macro";d.innerHTML="<span>"+p+"% del 1RM</span><b>"+Math.round(one*p/100)+" kg</b>";box.appendChild(d)});
   document.getElementById("rInitial").classList.add("hidden");document.getElementById("rResult").classList.remove("hidden");
 });
-
+refreshProfileUI();
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("service-worker.js").catch(function(){})})}
 })();
 </script>
