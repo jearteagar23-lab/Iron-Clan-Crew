@@ -78,6 +78,25 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
 .accent{color:var(--lime)}
 .footer{text-align:center;color:#777;font-size:12px;padding:22px 0}
 .badge{display:inline-block;background:#1d1d1d;border:1px solid #333;border-radius:999px;padding:7px 10px;color:#ddd;font-size:12px;margin:4px}
+
+.meal-card{background:#151515;border:1px solid var(--line);border-radius:16px;padding:15px;margin-top:14px}
+.meal-head{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.meal-head h4{margin:0;font-size:18px}
+.meal-pct{color:var(--lime);font-weight:900;font-size:18px}
+.meal-target{color:#ddd;font-size:14px;line-height:1.5;margin:9px 0}
+.food-option{background:#1b1b1b;border:1px solid #333;border-radius:12px;padding:12px;margin-top:10px;line-height:1.5}
+.food-option strong{color:var(--lime)}
+.food-selectors{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.food-selectors label{margin:0 0 5px;font-size:12px;color:var(--muted)}
+.food-selectors select{padding:10px;font-size:13px}
+.custom-food{background:#101010;border:1px dashed #414141;border-radius:12px;padding:12px;margin-top:10px}
+.pct-bar{height:7px;background:#252525;border-radius:999px;overflow:hidden;margin:10px 0}
+.pct-bar span{height:100%;display:block;background:var(--lime);border-radius:999px}
+.daily-split{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.daily-split div{background:#171717;border:1px solid #303030;border-radius:10px;padding:10px;text-align:center}
+.daily-split b{display:block;color:var(--lime);font-size:18px}
+@media(max-width:600px){.food-selectors,.daily-split{grid-template-columns:1fr}}
+
 @media(max-width:800px){
   .hero-grid,.two-col,.tool-grid{grid-template-columns:1fr}
   .shell{padding:12px}
@@ -180,6 +199,8 @@ button.secondary{background:#222;color:#fff;border:1px solid #3c3c3c}
           </div>
           <div id="mDetail" class="box"></div>
           <h3>Reparto por comidas</h3>
+          <div id="dailySplit" class="daily-split"></div>
+          <p class="note">Cada comida incluye tres propuestas y un selector para cambiar proteína, carbohidrato o grasa por productos habituales del mercado peruano.</p>
           <div id="mMeals"></div>
           <button class="secondary no-print" onclick="window.print()">GUARDAR EN PDF</button>
         </div>
@@ -280,6 +301,86 @@ function showSection(id){
 document.querySelectorAll(".nav button").forEach(function(b){b.addEventListener("click",function(){showSection(b.dataset.section)})});
 document.querySelectorAll("[data-open]").forEach(function(el){el.addEventListener("click",function(){showSection(el.dataset.open)})});
 
+
+var FOOD_DB={
+  proteins:{
+    "Pollo (pechuga cocida)":{p:31,c:0,f:3.6},
+    "Pavita cocida":{p:29,c:0,f:2},
+    "Atún en agua escurrido":{p:26,c:0,f:1},
+    "Carne de res magra":{p:27,c:0,f:8},
+    "Pescado blanco":{p:24,c:0,f:2},
+    "Huevos enteros":{p:13,c:1,f:10},
+    "Yogur griego natural":{p:10,c:4,f:2}
+  },
+  carbs:{
+    "Arroz blanco cocido":{p:2.7,c:28,f:.3},
+    "Papa sancochada":{p:2,c:20,f:.1},
+    "Camote cocido":{p:1.6,c:20,f:.1},
+    "Quinua cocida":{p:4.4,c:21,f:1.9},
+    "Menestra cocida":{p:9,c:20,f:.5},
+    "Pan integral":{p:10,c:43,f:4},
+    "Fideos cocidos":{p:5,c:25,f:1.1}
+  },
+  fats:{
+    "Palta":{p:2,c:9,f:15},
+    "Maní":{p:26,c:16,f:49},
+    "Pecanas":{p:9,c:14,f:72},
+    "Aceite de oliva":{p:0,c:0,f:100}
+  }
+};
+function gramsFor(food,target,macro){
+  var value=FOOD_DB[macro][food][macro==="proteins"?"p":macro==="carbs"?"c":"f"];
+  return Math.max(5,Math.round((target/value*100)/5)*5);
+}
+function selectHtml(group,id,selected){
+  var options=Object.keys(FOOD_DB[group]).map(function(name){
+    return "<option"+(name===selected?" selected":"")+">"+name+"</option>";
+  }).join("");
+  return "<select id='"+id+"'>"+options+"</select>";
+}
+function renderCustomMeal(index,pTarget,cTarget,fTarget){
+  var pEl=document.getElementById("protein-"+index),cEl=document.getElementById("carb-"+index),fEl=document.getElementById("fat-"+index);
+  if(!pEl||!cEl||!fEl)return;
+  var pFood=pEl.value,cFood=cEl.value,fFood=fEl.value;
+  var pGram=gramsFor(pFood,pTarget,"proteins");
+  var cGram=gramsFor(cFood,cTarget,"carbs");
+  var fGram=gramsFor(fFood,fTarget,"fats");
+  document.getElementById("custom-"+index).innerHTML=
+    "<strong>Tu combinación:</strong><br>"+
+    pGram+" g de "+pFood+" + "+cGram+" g de "+cFood+" + "+fGram+" g de "+fFood+
+    " + verduras libres.";
+}
+function bindMealSelectors(index,p,c,f){
+  ["protein-","carb-","fat-"].forEach(function(prefix){
+    document.getElementById(prefix+index).addEventListener("change",function(){renderCustomMeal(index,p,c,f)});
+  });
+  renderCustomMeal(index,p,c,f);
+}
+function mealOptions(index,label,pTarget,cTarget,fTarget){
+  function g(group,name,target){return gramsFor(name,target,group)}
+  var isBreakfast=index===0;
+  var isSnack=/Snack|Media|Merienda|Preentreno|Postentreno/i.test(label);
+  if(isBreakfast){
+    return [
+      g("proteins","Huevos enteros",pTarget)+" g de huevos enteros + "+g("carbs","Pan integral",cTarget)+" g de pan integral + "+g("fats","Palta",fTarget)+" g de palta + 1 fruta.",
+      g("proteins","Yogur griego natural",pTarget)+" g de yogur griego + "+g("carbs","Quinua cocida",cTarget)+" g de quinua cocida + plátano o papaya.",
+      g("proteins","Pavita cocida",pTarget)+" g de pavita + "+g("carbs","Camote cocido",cTarget)+" g de camote + "+g("fats","Palta",fTarget)+" g de palta."
+    ];
+  }
+  if(isSnack){
+    return [
+      g("proteins","Yogur griego natural",pTarget)+" g de yogur griego + "+g("carbs","Pan integral",cTarget)+" g de pan integral + fruta.",
+      g("proteins","Atún en agua escurrido",pTarget)+" g de atún + "+g("carbs","Papa sancochada",cTarget)+" g de papa.",
+      g("proteins","Huevos enteros",pTarget)+" g de huevos + "+g("carbs","Camote cocido",cTarget)+" g de camote."
+    ];
+  }
+  return [
+    g("proteins","Pollo (pechuga cocida)",pTarget)+" g de pollo + "+g("carbs","Arroz blanco cocido",cTarget)+" g de arroz + "+g("fats","Palta",fTarget)+" g de palta + ensalada.",
+    g("proteins","Pescado blanco",pTarget)+" g de pescado + "+g("carbs","Papa sancochada",cTarget)+" g de papa + "+g("fats","Aceite de oliva",fTarget)+" g de aceite de oliva + verduras.",
+    g("proteins","Carne de res magra",pTarget)+" g de carne magra + "+g("carbs","Quinua cocida",cTarget)+" g de quinua + verduras."
+  ];
+}
+
 document.getElementById("macroForm").addEventListener("submit",function(e){
   e.preventDefault();
   var err=document.getElementById("mError");err.classList.add("hidden");
@@ -301,9 +402,31 @@ document.getElementById("macroForm").addEventListener("submit",function(e){
   t("mCarb",Math.round(carb));t("mFiber",Math.round(fiber));t("mWater",water.toFixed(1));
   var detail=goal==="perder"?"Déficit aproximado del 18%.":goal==="recomposicion"?"Déficit leve aproximado del 5%, proteína elevada y entrenamiento de fuerza para favorecer la recomposición corporal.":goal==="ganar"?"Superávit aproximado del 10%.":"Calorías de mantenimiento.";
   document.getElementById("mDetail").textContent=detail+" Proteína "+pf.toFixed(1)+" g/kg y grasas "+fkg.toFixed(1)+" g/kg.";
+  var proteinPct=Math.round(prot*4/cal*100),fatPct=Math.round(fat*9/cal*100),carbPct=100-proteinPct-fatPct;
+  document.getElementById("dailySplit").innerHTML=
+    "<div><b>"+proteinPct+"%</b>Proteína</div><div><b>"+fatPct+"%</b>Grasas</div><div><b>"+carbPct+"%</b>Carbohidratos</div>";
+  var dist={3:[30,40,30],4:[25,30,20,25],5:[20,15,30,15,20],6:[18,12,28,12,15,15]};
+  var names={3:["Desayuno","Almuerzo","Cena"],4:["Desayuno","Almuerzo","Snack","Cena"],5:["Desayuno","Media mañana","Almuerzo","Merienda","Cena"],6:["Desayuno","Media mañana","Almuerzo","Preentreno","Postentreno","Cena"]};
   var box=document.getElementById("mMeals");box.innerHTML="";
-  var pc=Math.round(prot/meals),fc=Math.round(fat/meals),cc=Math.round(carb/meals),kc=Math.round(cal/meals);
-  for(var i=1;i<=meals;i++){var d=document.createElement("div");d.className="box";d.innerHTML="<b>Comida "+i+"</b><br>"+kc+" kcal · "+pc+" g proteína · "+fc+" g grasa · "+cc+" g carbohidratos";box.appendChild(d)}
+  dist[meals].forEach(function(pct,idx){
+    var pTarget=Math.round(prot*pct/100),fTarget=Math.round(fat*pct/100),cTarget=Math.round(carb*pct/100),kTarget=Math.round(cal*pct/100);
+    var label=names[meals][idx],opts=mealOptions(idx,label,pTarget,cTarget,fTarget);
+    var d=document.createElement("div");d.className="meal-card";
+    d.innerHTML="<div class='meal-head'><h4>"+label+"</h4><span class='meal-pct'>"+pct+"%</span></div>"+
+      "<div class='pct-bar'><span style='width:"+pct+"%'></span></div>"+
+      "<div class='meal-target'>"+kTarget+" kcal · "+pTarget+" g proteína · "+fTarget+" g grasa · "+cTarget+" g carbohidratos</div>"+
+      "<div class='food-option'><strong>Opción 1</strong><br>"+opts[0]+"</div>"+
+      "<div class='food-option'><strong>Opción 2</strong><br>"+opts[1]+"</div>"+
+      "<div class='food-option'><strong>Opción 3</strong><br>"+opts[2]+"</div>"+
+      "<div class='food-selectors'>"+
+        "<div><label>Proteína</label>"+selectHtml("proteins","protein-"+idx,"Pollo (pechuga cocida)")+"</div>"+
+        "<div><label>Carbohidrato</label>"+selectHtml("carbs","carb-"+idx,"Arroz blanco cocido")+"</div>"+
+        "<div><label>Grasa</label>"+selectHtml("fats","fat-"+idx,"Palta")+"</div>"+
+      "</div><div id='custom-"+idx+"' class='custom-food'></div>"+
+      "<p class='swap-note'>Elige una sola propuesta o crea tu combinación. Pesos aproximados y preferentemente cocidos.</p>";
+    box.appendChild(d);
+    bindMealSelectors(idx,pTarget,cTarget,fTarget);
+  });
   document.getElementById("mInitial").classList.add("hidden");document.getElementById("mResult").classList.remove("hidden");
   calculateIMC(false);calculateWater(false);
 });
